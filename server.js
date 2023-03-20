@@ -3,6 +3,9 @@ const bodyParser = require('body-parser');
 const MongoClient = require('mongodb').MongoClient;
 const app = express();
 const methodOverride = require('method-override');
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const session = require('express-session');
 
 
 
@@ -10,6 +13,11 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs');
 app.use('/public', express.static('public'))
 app.use(methodOverride('_method'))
+app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+
 
 
 var db;
@@ -52,13 +60,13 @@ app.post('/add', (req, res)=>{
             })
         });
     })
-})
+});
 
 app.get('/list', (req, res)=>{
     db.collection('post').find().toArray((error, result)=>{
         res.render('list.ejs', { posts : result });
     })
-})
+});
 
 app.delete('/delete', (req, res)=>{
     req.body._id = parseInt(req.body._id)
@@ -66,13 +74,13 @@ app.delete('/delete', (req, res)=>{
         if(error) console.log(error);
     })
     res.send('삭제완료');
-})
+});
 
 app.get('/detail/:id', (req, res)=>{
     db.collection('post').findOne({ _id : parseInt(req.params.id) }, (error, result)=>{
         res.render('detail.ejs', { data : result })
     })
-})
+});
 
 
 
@@ -81,7 +89,7 @@ app.get('/edit/:id', (req, res)=>{
     db.collection('post').findOne({ _id: parseInt(req.params.id)}, (error, result)=>{
         res.render('edit.ejs', { post : result })
     })
-})
+});
 
 
 app.put('/edit', (req, res)=>{
@@ -91,4 +99,69 @@ app.put('/edit', (req, res)=>{
         console.log('수정완료') 
         res.redirect('/list')
     });
-})
+});
+
+
+
+app.get('/login', (req, res)=>{
+    res.render('login.ejs');
+});
+
+app.post('/login', passport.authenticate('local', { failureRedirect : '/fail' }), (req, res)=>{
+    res.redirect('/mypage');
+});
+
+passport.use(new LocalStrategy({
+    usernameField: 'id',
+    passwordField: 'pw',
+    session: true,
+    passReqToCallback: false,
+  }, function (입력한아이디, 입력한비번, done) {
+    //console.log(입력한아이디, 입력한비번);
+    db.collection('login').findOne({ id: 입력한아이디 }, function (err, result) {
+      if (err) return done(err)
+  
+      if (!result) return done(null, false, { message: '존재하지않는 아이디요' })
+      if (입력한비번 == result.pw) {
+        return done(null, result)
+      } else {
+        return done(null, false, { message: '비번틀렸어요' })
+      }
+    })
+  }));
+
+
+  passport.serializeUser(function (user, done) {
+        done(null, user.id)
+  });
+  
+  passport.deserializeUser(function (아이디, done) {
+    db.collection('login').findOne({ id: 아이디 }, function (err, result) {
+        done(null, result)
+        console.log(result);
+    })
+  }); 
+
+
+  app.get('/mypage', isLogIn , (req, res)=>{
+        console.log(req.user);
+        res.render('mypage.ejs', { user : req.user })
+  })
+
+  function isLogIn (req, res, next) { 
+    if (req.user) { 
+      next() 
+    } 
+    else { 
+      res.render('login.ejs')
+    } 
+  } 
+
+
+  app.get('/logout', (req, res, next)=>{
+    req.logout(err =>{
+        if(err) return next(err);
+    }
+    );
+    res.redirect('/');
+  })
