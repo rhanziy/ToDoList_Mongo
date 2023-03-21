@@ -6,7 +6,13 @@ const methodOverride = require('method-override');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const session = require('express-session');
+const register = require('./routes/register');
 
+
+
+require('dotenv').config();
+
+const mongoose = require('mongoose');
 
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -16,25 +22,34 @@ app.use(methodOverride('_method'))
 app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
 app.use(passport.initialize());
 app.use(passport.session());
-
-
+app.use('/register', register);
 
 
 var db;
 
 
 MongoClient.connect(
-    'mongodb+srv://admin:qwer1234@cluster0.h2gpnn4.mongodb.net/todoapp?retryWrites=true&w=majority',
+    process.env.DB_URL,
     { useUnifiedTopology : true},
     (error, client)=>{
 
     if(error) return console.log(error);
     db = client.db('todoapp');
 
-    app.listen(8080, function(){
+    app.listen(process.env.PORT, function(){
         console.log('listening on 8080');
     });    
 });
+
+
+mongoose.connect(
+    process.env.DB_URL,
+    {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    }
+).then(()=> console.log('connected...'))
+.catch((err) => console.log(err.message));
 
 
 
@@ -165,3 +180,8 @@ passport.use(new LocalStrategy({
     );
     res.redirect('/');
   })
+
+
+
+
+
