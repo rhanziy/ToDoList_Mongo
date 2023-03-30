@@ -7,6 +7,10 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const session = require('express-session');
 const register = require('./routes/register');
+const crypto = require('crypto');
+
+
+
 
 
 
@@ -117,7 +121,6 @@ app.put('/edit', (req, res)=>{
 });
 
 
-
 app.get('/login', (req, res)=>{
     res.render('login.ejs');
 });
@@ -133,7 +136,7 @@ passport.use(new LocalStrategy({
     passReqToCallback: false,
   }, function (입력한아이디, 입력한비번, done) {
     //console.log(입력한아이디, 입력한비번);
-    db.collection('login').findOne({ id: 입력한아이디 }, function (err, result) {
+    db.collection('users').findOne({ id: 입력한아이디 }, function (err, result) {
       if (err) return done(err)
   
       if (!result) return done(null, false, { message: '존재하지않는 아이디요' })
@@ -151,7 +154,7 @@ passport.use(new LocalStrategy({
   });
   
   passport.deserializeUser(function (아이디, done) {
-    db.collection('login').findOne({ id: 아이디 }, function (err, result) {
+    db.collection('users').findOne({ id: 아이디 }, function (err, result) {
         done(null, result)
         console.log(result);
     })
@@ -183,5 +186,14 @@ passport.use(new LocalStrategy({
 
 
 
+  app.get('/register', (req, res)=>{
+    res.render('register.ejs');
+});
 
 
+app.post('/register', (req, res)=>{
+        db.collection('users').insertOne({ name : req.body.name , id : req.body.id, pw : req.body.pw}, (error, result)=>{
+            if(error) return console.log(error);
+            res.render('login.ejs');
+        });
+});
